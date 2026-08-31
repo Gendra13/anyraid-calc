@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AnyRAID Capacity Calculator</title>
+<style>
+  :root{
+    --bg: #0d1117;
+    --panel: #131a23;
+    --panel-2: #1a2330;
+    --line: #26313f;
+    --text: #dbe4ee;
+    --muted: #7c8ba1;
+    --data: #3fb6a8;
+    --parity: #d98a3d;
+    --waste: #c77dff;
+    --accent: #5aa9ff;
+    --danger: #e0605a;
+    --mono: 'IBM Plex Mono','SFMono-Regular',Consolas,monospace;
+    --sans: 'IBM Plex Sans','Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    padding:0;
+  }
+  .page{
+    max-width:1180px;
+    margin:0 auto;
+    padding:28px 20px 60px;
+  }
+  @font-face{ }
+  h1{
+    font-family:var(--mono);
+    font-size:20px;
+    letter-spacing:0.5px;
+    margin:0 0 4px;
+    color:#fff;
+  }
+  .sub{
+    color:var(--muted);
+    font-size:13px;
+    margin:0 0 26px;
+    max-width:640px;
+    line-height:1.5;
+  }
+  .header-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  .layout{
+    display:grid;
+    grid-template-columns: 380px 1fr;
+    gap:20px;
+  }
+  @media (max-width: 880px){
+    .layout{grid-template-columns: 1fr;}
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px;
+  }
+  .panel + .panel{margin-top:16px;}
+  .panel h2{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:1.2px;
+    color:var(--muted);
+    margin:0 0 14px;
+    font-weight:600;
+  }
+  .row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:10px;
+  }
+  .row label{
+    font-size:13px;
+    color:var(--muted);
+    width:110px;
+    flex-shrink:0;
+  }
+  select, input[type=number]{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:6px;
+    padding:7px 9px;
+    font-family:var(--mono);
+    font-size:13px;
+    width:100%;
+  }
+  select:focus, input:focus{outline:1px solid var(--accent);}
+  .stat-inline{
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--accent);
+  }
+  .disks{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin-bottom:12px;
+  }
+  .disk-row{
+    display:grid;
+    grid-template-columns: 20px 1fr 78px 60px 26px;
+    align-items:center;
+    gap:8px;
+  }
+  .disk-swatch{
+    width:10px;height:10px;border-radius:2px;background:var(--accent);
+  }
+  .disk-row input[type=text]{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:6px;
+    padding:6px 8px;
+    font-size:12.5px;
+    font-family:var(--mono);
+    width:100%;
+  }
+  .disk-row input[type=number]{padding:6px 8px;font-size:12.5px;}
+  .disk-row select{padding:6px 4px;font-size:12px;}
+  .disk-row button{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--muted);
+    border-radius:6px;
+    width:26px;height:28px;
+    cursor:pointer;
+    font-size:14px;
+    line-height:1;
+  }
+  .disk-row button:hover{border-color:var(--danger);color:var(--danger);}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+  button.add, button.preset{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:6px;
+    padding:8px 12px;
+    font-size:12.5px;
+    font-family:var(--sans);
+    cursor:pointer;
+  }
+  button.add{color:var(--accent);border-color:#2a4460;}
+  button.add:hover{background:#1c2938;}
+  button.preset:hover{background:#1c2938;}
+  .warn{
+    background:#2a1414;
+    border:1px solid #5a2a2a;
+    color:#f0a3a0;
+    padding:10px 12px;
+    border-radius:8px;
+    font-size:12.5px;
+    line-height:1.5;
+    margin-top:10px;
+  }
+  .headline{
+    display:flex;
+    align-items:baseline;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-bottom:18px;
+  }
+  .headline .big{
+    font-family:var(--mono);
+    font-size:38px;
+    color:#fff;
+    font-weight:600;
+  }
+  .headline .label{
+    font-size:12px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:1px;
+  }
+  .metrics{
+    display:grid;
+    grid-template-columns: repeat(3,1fr);
+    gap:10px;
+    margin-bottom:20px;
+  }
+  .metric{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 12px;
+  }
+  .metric .v{font-family:var(--mono);font-size:16px;color:#fff;}
+  .metric .k{font-size:11px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;}
+  .metric.data .v{color:var(--data);}
+  .metric.parity .v{color:var(--parity);}
+  .metric.waste .v{color:var(--muted);}
+
+  .diskviz{margin-top:6px;}
+  .diskviz-row{
+    display:grid;
+    grid-template-columns: 90px 1fr 150px;
+    align-items:center;
+    gap:10px;
+    margin-bottom:7px;
+    font-family:var(--mono);
+    font-size:11.5px;
+  }
+  .diskviz-row .name{color:var(--muted);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .bar{
+    position:relative;
+    height:18px;
+    border-radius:4px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    overflow:hidden;
+    display:flex;
+  }
+  .bar .seg-used{background:linear-gradient(90deg,var(--data),var(--data) calc(100% - 3px), rgba(255,255,255,0.15) 100%);}
+  .bar .seg-waste{background:var(--waste);}
+  .diskviz-row .fig{color:var(--text);text-align:right;white-space:nowrap;}
+  .legend{
+    display:flex;
+    gap:18px;
+    font-size:11.5px;
+    color:var(--muted);
+    margin:14px 0 4px;
+  }
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .diskviz-row.sum-row{border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:10px;}
+  .diskviz-row.sum-row .name{color:var(--text);font-weight:600;}
+  .diskviz-row.sum-row .bar{border-color:transparent;background:transparent;}
+  .legend i{width:10px;height:10px;border-radius:2px;display:inline-block;}
+  .note{
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.6;
+    margin-top:18px;
+    border-top:1px solid var(--line);
+    padding-top:14px;
+  }
+  .note code{
+    background:var(--panel-2);
+    padding:1px 5px;
+    border-radius:4px;
+    font-family:var(--mono);
+    color:var(--accent);
+  }
+  input[type=range]{width:100%;accent-color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="header-row">
+  <div>
+    <h1>&gt; anyraid_capacity.calc</h1>
+    <p class="sub">Simulates AnyRAID's actual tile-allocation algorithm (First-Fit-Descending bin-packing): each stripe picks the <b>nparity + ndata</b> disks with the most free capacity. Unevenly sized disks therefore create unusable space on the larger drives.</p>
+  </div>
+  <button class="add" id="shareLink" style="flex-shrink:0;">🔗 Create link</button>
+</div>
+
+<div class="layout">
+  <div>
+    <div class="panel">
+      <h2>Redundancy</h2>
+      <div class="row">
+        <label>Parity</label>
+        <select id="parity">
+          <option value="1">anyraidz1 (1 parity)</option>
+          <option value="2">anyraidz2 (2 parity)</option>
+          <option value="3">anyraidz3 (3 parity)</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Data disks</label>
+        <input type="number" id="ndata" value="3" min="1" max="200">
+      </div>
+      <div class="row">
+        <label>Stripe width</label>
+        <span class="stat-inline" id="stripeWidth">5</span>
+        <span style="color:var(--muted);font-size:12px;">= parity + data disks (how many disks each tile needs)</span>
+      </div>
+      <div class="row">
+        <label>Tile size</label>
+        <input type="number" id="tileSize" value="64" min="1" step="1">
+        <select id="tileUnit" style="max-width:90px;">
+          <option value="1048576">MiB</option>
+          <option value="1073741824" selected>GiB</option>
+        </select>
+        <button class="add" id="autoTile" style="flex-shrink:0;white-space:nowrap;">Auto</button>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:-4px;line-height:1.5;">
+        ZFS picks the real tile size automatically based on disk geometry.
+      </div>
+      <div class="row" style="margin-top:14px;">
+        <label>spa_slop_shift</label>
+        <input type="range" id="slop" min="1" max="10" step="1" value="5" style="flex:1;">
+        <span class="stat-inline" id="slopVal" style="width:78px;text-align:right;">5 (3.1%)</span>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:-4px;line-height:1.5;">
+        ZFS reserves <code style="background:var(--panel-2);padding:1px 4px;border-radius:3px;">1 / 2^spa_slop_shift</code> of the pool as a safety margin (default tunable: 5, i.e. 1/32 ≈ 3.125%).
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Disks</h2>
+      <div id="diskList" class="disks"></div>
+      <div class="btnrow">
+        <button class="add" id="addDisk">+ Add disk</button>
+      </div>
+      <div id="warnBox"></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>Result</h2>
+      <div class="headline">
+        <span class="big" id="usableBig" style="color:var(--accent);">–</span>
+        <span class="label">AVAIL (after slop)</span>
+      </div>
+      <div class="metrics">
+        <div class="metric data">
+          <div class="v" id="mData">–</div>
+          <div class="k">Usable data (raw)</div>
+        </div>
+        <div class="metric parity">
+          <div class="v" id="mParity">–</div>
+          <div class="k">Parity overhead</div>
+        </div>
+        <div class="metric waste">
+          <div class="v" id="mWaste">–</div>
+          <div class="k">Unusable space (wasted)</div>
+        </div>
+      </div>
+
+      <h2>Usage per disk</h2>
+      <div class="legend">
+        <span><i style="background:var(--data)"></i>used (data + parity)</span>
+        <span><i style="background:var(--waste)"></i>unusable (waste)</span>
+      </div>
+      <div id="diskVizSum"></div>
+      <div class="diskviz" id="diskViz"></div>
+
+      <div class="note">
+        <b>How this is calculated:</b> each disk is split into <code>tiles</code> of the chosen tile size (rounded down). In each round, the <code>stripe width</code> disks with the most free tiles are picked and one tile from each is assigned to a new stripe — until there are no longer enough disks with free tiles. This is exactly the First-Fit-Descending procedure implemented in <code>calculate_asize()</code> in <code>vdev_anyraid.c</code>. Tiles on excessively large disks that can never take part in a full stripe are left over as waste — this is precisely the behaviour that distinguishes AnyRAID from classic RAIDZ (where all disks must be the same size, or the excess is lost entirely).
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const COLORS = ['#5aa9ff','#3fb6a8','#d98a3d','#c77dff','#f2c14e','#66c2a5','#e07a9d','#8ea6c9','#7fd67f','#e0605a'];
+
+let disks = [];
+let idCounter = 0;
+
+function newDisk(name, size, unit){
+  idCounter++;
+  return {id:idCounter, name: name || ('disk'+idCounter), size: size, unit: unit || 'GiB', color: COLORS[(idCounter-1)%COLORS.length]};
+}
+
+function initDefaults(){
+  disks = [];
+  disks.push(newDisk('sda', 4, 'TB'));
+  disks.push(newDisk('sdb', 6, 'TB'));
+  disks.push(newDisk('sdc', 6, 'TB'));
+  disks.push(newDisk('sdd', 8, 'TB'));
+  disks.push(newDisk('sde', 10, 'TB'));
+  renderDisks();
+  compute();
+}
+
+function encodeDiskList(diskArr){
+  return diskArr.map(d => encodeURIComponent(d.name) + ':' + d.size + d.unit).join(',');
+}
+function decodeDiskList(str){
+  if(!str) return [];
+  return str.split(',').map(entry=>{
+    const idx = entry.indexOf(':');
+    if(idx === -1) return null;
+    const name = decodeURIComponent(entry.slice(0, idx));
+    const rest = entry.slice(idx+1);
+    const m = rest.match(/^([\d.]+)([A-Za-z]+)$/);
+    if(!m) return null;
+    return [name, parseFloat(m[1]), m[2]];
+  }).filter(Boolean);
+}
+
+const MiB_ = 1048576, GiB_ = 1073741824, TiB_ = GiB_*1024;
+function tileUnitLabel(bytes){
+  const n = Number(bytes);
+  if(n === TiB_) return 'TiB';
+  if(n === MiB_) return 'MiB';
+  return 'GiB';
+}
+function tileUnitBytesFromLabel(label){
+  if(label === 'TiB') return TiB_;
+  if(label === 'MiB') return MiB_;
+  return GiB_;
+}
+function ensureTileUnitOption(bytes, label){
+  const unitSelect = document.getElementById('tileUnit');
+  if(!Array.from(unitSelect.options).some(o=>Number(o.value)===bytes)){
+    const opt = document.createElement('option');
+    opt.value = String(bytes);
+    opt.textContent = label;
+    unitSelect.appendChild(opt);
+  }
+}
+
+function currentState(){
+  return {
+    p: document.getElementById('parity').value,
+    n: document.getElementById('ndata').value,
+    ts: document.getElementById('tileSize').value,
+    tu: tileUnitLabel(document.getElementById('tileUnit').value),
+    sl: document.getElementById('slop').value,
+    d: disks
+  };
+}
+
+function stateToQueryString(s){
+  return [
+    'p='+encodeURIComponent(s.p),
+    'n='+encodeURIComponent(s.n),
+    'ts='+encodeURIComponent(s.ts),
+    'tu='+encodeURIComponent(s.tu),
+    'sl='+encodeURIComponent(s.sl),
+    'd='+encodeDiskList(s.d)
+  ].join('&');
+}
+
+function queryStringToState(qs){
+  const params = new URLSearchParams(qs);
+  return {
+    p: params.get('p'),
+    n: params.get('n'),
+    ts: params.get('ts'),
+    tu: params.get('tu') || 'GiB',
+    sl: params.get('sl'),
+    d: decodeDiskList(params.get('d'))
+  };
+}
+
+function applyState(s){
+  document.getElementById('parity').value = s.p;
+  document.getElementById('ndata').value = s.n;
+  document.getElementById('tileSize').value = s.ts;
+  const tuBytes = tileUnitBytesFromLabel(s.tu);
+  ensureTileUnitOption(tuBytes, s.tu);
+  document.getElementById('tileUnit').value = String(tuBytes);
+  document.getElementById('slop').value = s.sl;
+  disks = s.d.map(([name, size, unit]) => newDisk(name, size, unit));
+  renderDisks();
+  syncTileSizeStepperBaseline();
+  compute();
+}
+
+function tryLoadStateFromQuery(){
+  if(location.search && location.search.length > 1){
+    try{
+      applyState(queryStringToState(location.search.slice(1)));
+      return true;
+    }catch(e){
+      console.warn('Could not load state from link:', e);
+    }
+  }
+  return false;
+}
+
+document.getElementById('shareLink').addEventListener('click', ()=>{
+  const btn = document.getElementById('shareLink');
+  const qs = stateToQueryString(currentState());
+  const url = location.origin + location.pathname + '?' + qs;
+  history.replaceState(null, '', '?' + qs);
+  const original = btn.textContent;
+  const showFeedback = (text)=>{
+    btn.textContent = text;
+    setTimeout(()=>{ btn.textContent = original; }, 2500);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(()=>{
+      showFeedback('✓ Link copied');
+    }).catch(()=>{
+      window.prompt('Copy failed — copy the link manually:', url);
+    });
+  } else {
+    window.prompt('Copy the link manually:', url);
+  }
+});
+
+function renderDisks(){
+  const list = document.getElementById('diskList');
+  list.innerHTML = '';
+  disks.forEach(d => {
+    const row = document.createElement('div');
+    row.className = 'disk-row';
+    row.innerHTML = `
+      <div class="disk-swatch" style="background:${d.color}"></div>
+      <input type="text" value="${d.name}" data-field="name" data-id="${d.id}">
+      <input type="number" min="1" step="1" value="${d.size}" data-field="size" data-id="${d.id}">
+      <select data-field="unit" data-id="${d.id}">
+        <option value="GiB" ${d.unit===undefined||d.unit==='GiB'?'selected':''}>GiB</option>
+        <option value="TiB" ${d.unit==='TiB'?'selected':''}>TiB</option>
+        <option value="GB" ${d.unit==='GB'?'selected':''}>GB</option>
+        <option value="TB" ${d.unit==='TB'?'selected':''}>TB</option>
+      </select>
+      <button data-remove="${d.id}" title="remove">×</button>
+    `;
+    list.appendChild(row);
+  });
+
+  list.querySelectorAll('input,select').forEach(el=>{
+    el.addEventListener('input', onDiskFieldChange);
+  });
+  list.querySelectorAll('button[data-remove]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = Number(btn.getAttribute('data-remove'));
+      disks = disks.filter(d=>d.id!==id);
+      renderDisks();
+      compute();
+    });
+  });
+}
+
+function onDiskFieldChange(e){
+  const id = Number(e.target.getAttribute('data-id'));
+  const field = e.target.getAttribute('data-field');
+  const d = disks.find(x=>x.id===id);
+  if(!d) return;
+  if(field === 'name') d.name = e.target.value;
+  if(field === 'size') d.size = parseFloat(e.target.value) || 0;
+  if(field === 'unit') d.unit = e.target.value;
+  compute();
+}
+
+function autoTileSizeBytes(diskList){
+  const GiB = 1073741824;
+  const DISK_SHIFT = 6;                 // anyraid_disk_shift default
+  const MIN_TILE = 16 * GiB;            // zfs_vdev_anyraid_min_tile_size default
+  const unitBytes = {GiB, TiB: GiB*1024, GB: 1e9, TB: 1e12};
+  if(!diskList.length) return MIN_TILE;
+  const sizesBytes = diskList.map(d => d.size * (unitBytes[d.unit] || GiB));
+  const smallest = Math.min(...sizesBytes);
+  let tile = smallest / Math.pow(2, DISK_SHIFT);
+  tile = Math.max(tile, MIN_TILE);
+  // round up to next power of two, exactly as vdev_anyraid.c does via highbit64(tile_size-1)
+  tile = Math.pow(2, Math.ceil(Math.log2(tile)));
+  return tile;
+}
+
+function tileBytesToField(bytes){
+  const GiB = 1073741824, TiB = GiB * 1024;
+  if(bytes >= TiB && bytes % TiB === 0) return {val: bytes/TiB, unit: TiB, label:'TiB'};
+  if(bytes % (1048576) === 0 && bytes < GiB) return {val: bytes/1048576, unit: 1048576, label:'MiB'};
+  return {val: bytes/GiB, unit: GiB, label:'GiB'};
+}
+
+document.getElementById('autoTile').addEventListener('click', ()=>{
+  const bytes = autoTileSizeBytes(disks);
+  const field = tileBytesToField(bytes);
+  ensureTileUnitOption(field.unit, field.label);
+  document.getElementById('tileUnit').value = String(field.unit);
+  document.getElementById('tileSize').value = field.val;
+  syncTileSizeStepperBaseline();
+  compute();
+});
+
+function syncTileSizeStepperBaseline(){
+  document.getElementById('tileSize').dataset.prevValue = document.getElementById('tileSize').value;
+}
+
+function attachTileSizeStepper(){
+  const input = document.getElementById('tileSize');
+  input.step = '1';
+  input.dataset.prevValue = input.value;
+  input.addEventListener('input', ()=>{
+    const newVal = parseFloat(input.value);
+    const prevVal = parseFloat(input.dataset.prevValue);
+    if(!isNaN(newVal) && !isNaN(prevVal) && prevVal > 0){
+      const diff = newVal - prevVal;
+      if(Math.abs(Math.abs(diff)-1) < 1e-9){
+        let corrected = diff > 0 ? prevVal*2 : prevVal/2;
+        if(corrected < 1) corrected = 1;
+        input.value = corrected;
+        input.dataset.prevValue = String(corrected);
+        compute();
+        return;
+      }
+    }
+    input.dataset.prevValue = isNaN(newVal) ? input.dataset.prevValue : String(newVal);
+    compute();
+  });
+}
+
+document.getElementById('addDisk').addEventListener('click', ()=>{
+  const lastUnit = disks.length ? disks[disks.length-1].unit : 'TB';
+  const lastSize = disks.length ? disks[disks.length-1].size : 4;
+  disks.push(newDisk(null, lastSize, lastUnit));
+  renderDisks();
+  compute();
+});
+
+['parity','ndata','tileUnit','slop'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', compute);
+});
+attachTileSizeStepper();
+
+function fmtBytes(bytes){
+  if(!isFinite(bytes) || bytes<=0) return '0 B';
+  const units = ['B','KiB','MiB','GiB','TiB','PiB'];
+  let u = 0;
+  let v = bytes;
+  while(v >= 1024 && u < units.length-1){ v/=1024; u++; }
+  return v.toFixed(v<10?2:(v<100?1:0)) + ' ' + units[u];
+}
+
+/*
+ * Mirrors calculate_asize() in module/zfs/vdev_anyraid.c:
+ * repeatedly pick the `width` disks with the most remaining tiles,
+ * consume 1 tile from each (batched via the "this_iter" shortcut),
+ * stop once fewer than `width` disks have tiles left.
+ */
+function simulateStripes(tileCounts, width){
+  const n = tileCounts.length;
+  if(n < width) return {stripes:0, remaining: tileCounts.slice()};
+  let remaining = tileCounts.slice();
+  let stripes = 0;
+  let guard = 0;
+  while(true){
+    guard++;
+    if(guard > 200000) break; // safety valve
+    const order = remaining.map((v,i)=>i).sort((a,b)=>remaining[b]-remaining[a]);
+    const nth = remaining[order[width-1]];
+    if(nth <= 0) break;
+    const nextVal = width < order.length ? remaining[order[width]] : 0;
+    const iter = Math.max(1, nth - nextVal);
+    stripes += iter;
+    for(let k=0;k<width;k++) remaining[order[k]] -= iter;
+  }
+  return {stripes, remaining};
+}
+
+function compute(){
+  const nparity = parseInt(document.getElementById('parity').value, 10);
+  const ndata = Math.max(1, parseInt(document.getElementById('ndata').value, 10) || 1);
+  const width = nparity + ndata;
+  document.getElementById('stripeWidth').textContent = width;
+
+  const tileSizeVal = parseFloat(document.getElementById('tileSize').value) || 1;
+  const tileUnitBytes = parseFloat(document.getElementById('tileUnit').value);
+  const tileSize = tileSizeVal * tileUnitBytes;
+
+  const warnBox = document.getElementById('warnBox');
+  warnBox.innerHTML = '';
+
+  if(disks.length === 0){
+    document.getElementById('usableBig').textContent = '–';
+    document.getElementById('mData').textContent = '–';
+    document.getElementById('mParity').textContent = '–';
+    document.getElementById('mWaste').textContent = '–';
+    document.getElementById('diskVizSum').textContent = '';
+    document.getElementById('diskViz').innerHTML = '<div style="color:var(--muted);font-size:12.5px;">No disks configured.</div>';
+    return;
+  }
+
+  if(disks.length < width){
+    warnBox.innerHTML = `<div class="warn"><b>Not enough disks:</b> anyraidz${nparity}:${ndata} needs at least ${width} disks (${ndata} data + ${nparity} parity), you have ${disks.length}.</div>`;
+  }
+
+  const GiB = 1073741824, TiB = GiB * 1024, GB = 1e9, TB = 1e12;
+  const unitBytes = {GiB, TiB, GB, TB};
+  // Fixed per-disk overhead: partitioning (9 MiB) + ZFS vdev labels (4.5 MiB) + AnyRAID tile map (~256 MiB)
+  const DISK_OVERHEAD_BYTES = 9*1048576 + 4.5*1048576 + 4*(8*1024 + 4*Math.pow(2,24));
+  const sizesBytes = disks.map(d => Math.max(0, d.size * (unitBytes[d.unit] || GiB) - DISK_OVERHEAD_BYTES));
+  const tileCounts = sizesBytes.map(s => Math.floor(s / tileSize));
+
+  const {stripes, remaining} = simulateStripes(tileCounts, width);
+
+  const usedTilesTotal = stripes * width;
+  const usableDataBytes = stripes * ndata * tileSize;
+  const parityBytes = stripes * nparity * tileSize;
+  const totalRawBytes = sizesBytes.reduce((a,b)=>a+b,0);
+  const usedRawBytes = usedTilesTotal * tileSize;
+  const wasteBytes = totalRawBytes - usedRawBytes;
+
+  const slopShift = parseInt(document.getElementById('slop').value, 10);
+  const slopFraction = 1 / Math.pow(2, slopShift);
+  document.getElementById('slopVal').textContent = slopShift + ' (' + (slopFraction*100).toFixed(1) + '%)';
+  const availAfterSlop = usableDataBytes * (1 - slopFraction);
+
+  document.getElementById('usableBig').innerHTML = fmtBytes(availAfterSlop) + (totalRawBytes>0 ? ' <span style="font-size:0.5em;color:var(--muted);">('+(100*availAfterSlop/totalRawBytes).toFixed(1)+'%)</span>' : '');
+  document.getElementById('mData').innerHTML = fmtBytes(usableDataBytes) + (totalRawBytes>0 ? ' <span style="font-size:0.85em;color:var(--muted);">('+(100*usableDataBytes/totalRawBytes).toFixed(1)+'%)</span>' : '');
+  document.getElementById('mParity').innerHTML = fmtBytes(parityBytes) + (totalRawBytes>0 ? ' <span style="font-size:0.85em;color:var(--muted);">('+(100*parityBytes/totalRawBytes).toFixed(1)+'%)</span>' : '');
+  document.getElementById('mWaste').innerHTML = fmtBytes(wasteBytes) + (totalRawBytes>0 ? ' <span style="font-size:0.85em;color:var(--muted);">('+(100*wasteBytes/totalRawBytes).toFixed(1)+'%)</span>' : '');
+
+  // per-disk viz: used tiles = original - remaining leftover after allocation
+  const usedPerDisk = tileCounts.map((t,i)=> t - remaining[i]);
+  const maxSize = Math.max(...sizesBytes, 1);
+
+  const sumUsedBytes = usedPerDisk.reduce((a,b,i)=>a+b*tileSize,0);
+  const sumTotalBytes = tileCounts.reduce((a,b)=>a+b*tileSize,0);
+  const sumUsedTiles = usedPerDisk.reduce((a,b)=>a+b,0);
+  const sumTotalTiles = tileCounts.reduce((a,b)=>a+b,0);
+  document.getElementById('diskVizSum').innerHTML = `
+    <div class="diskviz-row sum-row">
+      <div class="name">Total</div>
+      <div class="bar"></div>
+      <div class="fig">${fmtBytes(sumUsedBytes)} / ${fmtBytes(sumTotalBytes)}<br><span style="color:var(--muted);font-size:10px;">${sumUsedTiles} / ${sumTotalTiles} tiles</span></div>
+    </div>
+  `;
+
+  const viz = document.getElementById('diskViz');
+  viz.innerHTML = '';
+  disks.forEach((d,i)=>{
+    const totalTiles = tileCounts[i];
+    const used = usedPerDisk[i];
+    const usedPct = totalTiles>0 ? (used/totalTiles*100) : 0;
+    const widthPct = (sizesBytes[i]/maxSize*100).toFixed(1);
+    const row = document.createElement('div');
+    row.className = 'diskviz-row';
+    row.innerHTML = `
+      <div class="name" style="color:${d.color}">${d.name}</div>
+      <div class="bar" style="width:100%;">
+        <div style="width:${widthPct}%;height:100%;display:flex;">
+          <div class="seg-used" style="width:${usedPct}%;"></div>
+          <div class="seg-waste" style="width:${100-usedPct}%;"></div>
+        </div>
+      </div>
+      <div class="fig">${fmtBytes(used*tileSize)} / ${fmtBytes(totalTiles*tileSize)}<br><span style="color:var(--muted);font-size:10px;">${used} / ${totalTiles} Tiles</span></div>
+    `;
+    viz.appendChild(row);
+  });
+}
+
+// init
+if(!tryLoadStateFromQuery()){
+  initDefaults();
+}
+</script>
+
+</body>
+</html>

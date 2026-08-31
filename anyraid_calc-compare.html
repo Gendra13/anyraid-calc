@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AnyRAID Capacity Calculator — Comparison</title>
+<style>
+  :root{
+    --bg: #0d1117;
+    --panel: #131a23;
+    --panel-2: #1a2330;
+    --line: #26313f;
+    --text: #dbe4ee;
+    --muted: #7c8ba1;
+    --data: #3fb6a8;
+    --parity: #d98a3d;
+    --waste: #c77dff;
+    --accent: #5aa9ff;
+    --accentB: #d98a3d;
+    --danger: #e0605a;
+    --mono: 'IBM Plex Mono','SFMono-Regular',Consolas,monospace;
+    --sans: 'IBM Plex Sans','Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);padding:0;}
+  .page{max-width:1320px;margin:0 auto;padding:28px 20px 60px;}
+  h1{font-family:var(--mono);font-size:20px;letter-spacing:0.5px;margin:0 0 4px;color:#fff;}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 24px;line-height:1.5;}
+  .header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+
+  .compare{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px;
+    margin-bottom:20px;
+  }
+  .compare h2{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin:0 0 14px;font-weight:600;}
+  .compare-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap:18px;
+    align-items:center;
+  }
+  @media (max-width: 780px){ .compare-grid{grid-template-columns:1fr;} }
+  .cbig{display:flex;align-items:baseline;gap:10px;}
+  .cbig .v{font-family:var(--mono);font-size:30px;color:#fff;font-weight:600;}
+  .cbig .n{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;}
+  .cbig.a .v{color:var(--accent);}
+  .cbig.b .v{color:var(--accentB);}
+  .delta{
+    font-family:var(--mono);
+    font-size:14px;
+    text-align:center;
+    padding:8px 16px;
+    border-radius:8px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    white-space:nowrap;
+  }
+  .delta .d-label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px;}
+  .compare-bar{margin-top:14px;}
+  .cbar-row{display:grid;grid-template-columns:70px 1fr 100px;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;margin-bottom:6px;}
+  .cbar-track{height:14px;background:var(--panel-2);border:1px solid var(--line);border-radius:4px;overflow:hidden;}
+  .cbar-fill{height:100%;}
+
+  .columns{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:14px 20px;
+    align-items:start;
+  }
+  @media (max-width: 980px){ .columns{grid-template-columns: 1fr;} }
+  .scenario-title{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:0 0 10px;
+    font-family:var(--mono);
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+  }
+  .scenario-title .dot{width:10px;height:10px;border-radius:50%;}
+  .scenario-title input[type=text]{
+    background:transparent;border:none;color:inherit;font:inherit;letter-spacing:inherit;
+    text-transform:inherit;width:auto;padding:0;border-bottom:1px dashed var(--line);
+  }
+  .scenario-title input[type=text]:focus{outline:none;border-bottom-color:var(--accent);}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;}
+  .panel h2{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin:0 0 12px;font-weight:600;}
+  .row{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+  .row label{font-size:12.5px;color:var(--muted);width:100px;flex-shrink:0;}
+  select, input[type=number]{
+    background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+    border-radius:6px;padding:6px 8px;font-family:var(--mono);font-size:12.5px;width:100%;
+  }
+  select:focus, input:focus{outline:1px solid var(--accent);}
+  .stat-inline{font-family:var(--mono);font-size:12.5px;color:var(--accent);}
+  .disks{display:flex;flex-direction:column;gap:7px;margin-bottom:10px;}
+  .disk-row{display:grid;grid-template-columns: 16px 1fr 64px 52px 24px;align-items:center;gap:6px;}
+  .disk-swatch{width:9px;height:9px;border-radius:2px;}
+  .disk-row input[type=text]{
+    background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+    border-radius:6px;padding:5px 7px;font-size:11.5px;font-family:var(--mono);width:100%;
+  }
+  .disk-row input[type=number]{padding:5px 6px;font-size:11.5px;}
+  .disk-row select{padding:5px 3px;font-size:11px;}
+  .disk-row button{
+    background:transparent;border:1px solid var(--line);color:var(--muted);
+    border-radius:6px;width:24px;height:26px;cursor:pointer;font-size:13px;line-height:1;
+  }
+  .disk-row button:hover{border-color:var(--danger);color:var(--danger);}
+  .btnrow{display:flex;gap:7px;flex-wrap:wrap;margin-top:5px;}
+  button.add, button.preset, button.copy{
+    background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+    border-radius:6px;padding:7px 10px;font-size:11.5px;font-family:var(--sans);cursor:pointer;
+  }
+  button.add{color:var(--accent);border-color:#2a4460;}
+  button.add:hover, button.preset:hover, button.copy:hover{background:#1c2938;}
+  .warn{
+    background:#2a1414;border:1px solid #5a2a2a;color:#f0a3a0;
+    padding:9px 11px;border-radius:8px;font-size:12px;line-height:1.5;margin-top:9px;
+  }
+  .headline{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+  .headline .big{font-family:var(--mono);font-size:30px;color:#fff;font-weight:600;}
+  .headline .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+  .metrics{display:grid;grid-template-columns: repeat(3,1fr);gap:8px;margin-bottom:14px;}
+  .metric{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;}
+  .metric .v{font-family:var(--mono);font-size:14px;color:#fff;}
+  .metric .k{font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:0.4px;}
+  .metric.data .v{color:var(--data);}
+  .metric.parity .v{color:var(--parity);}
+  .metric.waste .v{color:var(--muted);}
+  .diskviz-row{display:grid;grid-template-columns: 70px 1fr 110px;align-items:center;gap:8px;margin-bottom:6px;font-family:var(--mono);font-size:10.5px;}
+  .diskviz-row .name{color:var(--muted);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .bar{position:relative;height:15px;border-radius:4px;background:var(--panel-2);border:1px solid var(--line);overflow:hidden;display:flex;}
+  .bar .seg-used{background:linear-gradient(90deg,var(--data),var(--data) calc(100% - 3px), rgba(255,255,255,0.15) 100%);}
+  .bar .seg-waste{background:var(--waste);}
+  .diskviz-row .fig{color:var(--text);text-align:right;white-space:nowrap;}
+  [data-tooltip]{position:relative;cursor:help;border-bottom:1px dotted var(--muted);}
+  [data-tooltip]:hover::after{
+    content:attr(data-tooltip);
+    position:absolute;
+    bottom:100%;
+    right:0;
+    margin-bottom:6px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:5px 9px;
+    border-radius:6px;
+    font-size:10.5px;
+    font-family:var(--mono);
+    white-space:nowrap;
+    z-index:30;
+    box-shadow:0 6px 16px rgba(0,0,0,0.45);
+    pointer-events:none;
+  }
+  .legend{display:flex;gap:14px;font-size:10.5px;color:var(--muted);margin:10px 0 4px;}
+  .diskviz-row.sum-row{border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:8px;}
+  .diskviz-row.sum-row .name{color:var(--text);font-weight:600;}
+  .diskviz-row.sum-row .bar{border-color:transparent;background:transparent;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .legend i{width:9px;height:9px;border-radius:2px;display:inline-block;}
+  .note{font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:24px;border-top:1px solid var(--line);padding-top:14px;}
+  .note code{background:var(--panel-2);padding:1px 5px;border-radius:4px;font-family:var(--mono);color:var(--accent);}
+  input[type=range]{width:100%;accent-color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="header-row">
+  <div>
+    <h1>&gt; anyraid_capacity.calc — compare</h1>
+    <p class="sub">Configure two AnyRAID layouts independently and compare them side by side. Simulates the exact First-Fit-Descending algorithm from <code style="background:var(--panel-2);padding:1px 4px;border-radius:3px;">calculate_asize()</code> in <code style="background:var(--panel-2);padding:1px 4px;border-radius:3px;">vdev_anyraid.c</code>.</p>
+  </div>
+  <button class="add" id="shareLink" style="flex-shrink:0;">🔗 Create link</button>
+</div>
+
+<div class="compare">
+  <h2>Comparison</h2>
+  <div class="compare-grid">
+    <div class="cbig a"><span class="v" id="cmpA">–</span><span class="n">Layout A · AVAIL</span></div>
+    <div class="cbig b"><span class="v" id="cmpB">–</span><span class="n">Layout B · AVAIL</span></div>
+    <div class="delta"><span class="d-label">Difference (B−A)</span><span id="cmpDelta">–</span></div>
+  </div>
+  <div class="compare-bar">
+    <div class="cbar-row">
+      <div style="color:var(--accent);">A</div>
+      <div class="cbar-track"><div class="cbar-fill" id="cbarA" style="background:var(--accent);width:0%;"></div></div>
+      <div id="cbarAtxt" style="text-align:right;color:var(--muted);">–</div>
+    </div>
+    <div class="cbar-row">
+      <div style="color:var(--accentB);">B</div>
+      <div class="cbar-track"><div class="cbar-fill" id="cbarB" style="background:var(--accentB);width:0%;"></div></div>
+      <div id="cbarBtxt" style="text-align:right;color:var(--muted);">–</div>
+    </div>
+  </div>
+</div>
+
+<div class="columns" id="columns"></div>
+
+<div class="note">
+  <b>How this is calculated:</b> each disk is split into tiles of the chosen tile size (rounded down). In each round, the <code>stripe width</code> disks with the most free tiles are picked and one tile from each is assigned to a new stripe, until there are no longer enough disks with free capacity. AVAIL additionally accounts for the <code>spa_slop_shift</code> reserve (default 5 = 1/32 ≈ 3.125%).
+</div>
+
+</div>
+
+<script>
+const COLORS = ['#5aa9ff','#3fb6a8','#d98a3d','#c77dff','#f2c14e','#66c2a5','#e07a9d','#8ea6c9','#7fd67f','#e0605a'];
+const GiB = 1073741824, TiB = GiB * 1024, GB = 1e9, TB = 1e12;
+const UNIT_BYTES = {GiB, TiB, GB, TB};
+
+function fmtBytes(bytes){
+  if(!isFinite(bytes) || bytes<=0) return '0 B';
+  const units = ['B','KiB','MiB','GiB','TiB','PiB'];
+  let u = 0, v = bytes;
+  while(v >= 1024 && u < units.length-1){ v/=1024; u++; }
+  return v.toFixed(v<10?2:(v<100?1:0)) + ' ' + units[u];
+}
+
+/* Mirrors calculate_asize() in module/zfs/vdev_anyraid.c */
+function simulateStripes(tileCounts, width){
+  const n = tileCounts.length;
+  if(n < width) return {stripes:0, remaining: tileCounts.slice()};
+  let remaining = tileCounts.slice();
+  let stripes = 0, guard = 0;
+  while(true){
+    guard++;
+    if(guard > 200000) break;
+    const order = remaining.map((v,i)=>i).sort((a,b)=>remaining[b]-remaining[a]);
+    const nth = remaining[order[width-1]];
+    if(nth <= 0) break;
+    const nextVal = width < order.length ? remaining[order[width]] : 0;
+    const iter = Math.max(1, nth - nextVal);
+    stripes += iter;
+    for(let k=0;k<width;k++) remaining[order[k]] -= iter;
+  }
+  return {stripes, remaining};
+}
+
+/* Mirrors anyraid_calculate_size() in module/zfs/vdev_anyraid.c: tile = max(smallest_disk >> 6, 16 GiB), rounded up to a power of two */
+function autoTileSizeBytes(diskList){
+  const DISK_SHIFT = 6;
+  const MIN_TILE = 16 * GiB;
+  if(!diskList.length) return MIN_TILE;
+  const sizesBytes = diskList.map(d => d.size * (UNIT_BYTES[d.unit] || GiB));
+  const smallest = Math.min(...sizesBytes);
+  let tile = smallest / Math.pow(2, DISK_SHIFT);
+  tile = Math.max(tile, MIN_TILE);
+  tile = Math.pow(2, Math.ceil(Math.log2(tile)));
+  return tile;
+}
+
+function tileBytesToField(bytes){
+  if(bytes >= TiB && bytes % TiB === 0) return {val: bytes/TiB, unit: TiB};
+  return {val: bytes/GiB, unit: GiB};
+}
+
+class Scenario {
+  constructor(key, label, color, presetDisks, presetCfg){
+    this.key = key;
+    this.label = label;
+    this.color = color;
+    this.idCounter = 0;
+    this.disks = [];
+    this.cfg = Object.assign({nparity:1, ndata:4, tileSizeVal:16, tileUnit:GiB, slopShift:5}, presetCfg||{});
+    presetDisks.forEach(d => this.addDisk(d.name, d.size, d.unit));
+  }
+  addDisk(name, size, unit){
+    this.idCounter++;
+    this.disks.push({id:this.key+'-'+this.idCounter, name: name || ('disk'+this.idCounter), size: size, unit: unit || 'GiB',
+      color: COLORS[(this.idCounter-1)%COLORS.length]});
+  }
+  removeDisk(id){ this.disks = this.disks.filter(d=>d.id!==id); }
+  clone(){
+    const c = new Scenario(this.key, this.label, this.color, [], this.cfg);
+    c.disks = this.disks.map(d=>Object.assign({}, d));
+    c.idCounter = this.idCounter;
+    return c;
+  }
+  compute(){
+    const {nparity, ndata, tileSizeVal, tileUnit, slopShift} = this.cfg;
+    const width = nparity + ndata;
+    const tileSize = tileSizeVal * tileUnit;
+    // Fixed per-disk overhead: partitioning (9 MiB) + ZFS vdev labels (4.5 MiB) + AnyRAID tile map (~256 MiB)
+    const DISK_OVERHEAD_BYTES = 9*1048576 + 4.5*1048576 + 4*(8*1024 + 4*Math.pow(2,24));
+    const sizesBytes = this.disks.map(d => Math.max(0, d.size * (UNIT_BYTES[d.unit] || GiB) - DISK_OVERHEAD_BYTES));
+    const tileCounts = sizesBytes.map(s => Math.floor(s / tileSize));
+    const {stripes, remaining} = simulateStripes(tileCounts, width);
+    const usableDataBytes = stripes * ndata * tileSize;
+    const parityBytes = stripes * nparity * tileSize;
+    const totalRawBytes = sizesBytes.reduce((a,b)=>a+b,0);
+    const usedRawBytes = stripes * width * tileSize;
+    const wasteBytes = totalRawBytes - usedRawBytes;
+    const slopFraction = 1 / Math.pow(2, slopShift);
+    const availAfterSlop = usableDataBytes * (1 - slopFraction);
+    const usedPerDisk = tileCounts.map((t,i)=> t - remaining[i]);
+    return {width, tileSize, sizesBytes, tileCounts, stripes, usableDataBytes, parityBytes,
+      totalRawBytes, wasteBytes, slopFraction, availAfterSlop, usedPerDisk,
+      insufficientDisks: this.disks.length < width, disksNeeded: width, disksHave: this.disks.length};
+  }
+}
+
+const scenarios = {
+  a: new Scenario('a','Layout A','var(--accent)',
+      [{name:'sda',size:4,unit:'TB'},{name:'sdb',size:6,unit:'TB'},{name:'sdc',size:6,unit:'TB'},
+       {name:'sdd',size:8,unit:'TB'},{name:'sde',size:10,unit:'TB'}],
+      {nparity:1, ndata:3, tileSizeVal:64, tileUnit:GiB, slopShift:5}),
+  b: new Scenario('b','Layout B','var(--accentB)',
+      [{name:'sda',size:4,unit:'TB'},{name:'sdb',size:6,unit:'TB'},{name:'sdc',size:8,unit:'TB'},
+       {name:'sdd',size:8,unit:'TB'},{name:'sde',size:8,unit:'TB'}],
+      {nparity:1, ndata:3, tileSizeVal:64, tileUnit:GiB, slopShift:5})
+};
+
+function encodeDiskList(diskArr){
+  return diskArr.map(d => encodeURIComponent(d.name) + ':' + d.size + d.unit).join(',');
+}
+function decodeDiskList(str){
+  if(!str) return [];
+  return str.split(',').map(entry=>{
+    const idx = entry.indexOf(':');
+    if(idx === -1) return null;
+    const name = decodeURIComponent(entry.slice(0, idx));
+    const rest = entry.slice(idx+1);
+    const m = rest.match(/^([\d.]+)([A-Za-z]+)$/);
+    if(!m) return null;
+    return [name, parseFloat(m[1]), m[2]];
+  }).filter(Boolean);
+}
+
+const MiB_ = 1048576, GiB_ = 1073741824, TiB_ = GiB_*1024;
+function tileUnitLabel(bytes){
+  const n = Number(bytes);
+  if(n === TiB_) return 'TiB';
+  if(n === MiB_) return 'MiB';
+  return 'GiB';
+}
+function tileUnitBytesFromLabel(label){
+  if(label === 'TiB') return TiB_;
+  if(label === 'MiB') return MiB_;
+  return GiB_;
+}
+
+function scenarioToQuery(prefix, s){
+  return [
+    prefix+'l='+encodeURIComponent(s.label),
+    prefix+'p='+s.cfg.nparity,
+    prefix+'n='+s.cfg.ndata,
+    prefix+'ts='+s.cfg.tileSizeVal,
+    prefix+'tu='+tileUnitLabel(s.cfg.tileUnit),
+    prefix+'sl='+s.cfg.slopShift,
+    prefix+'d='+encodeDiskList(s.disks)
+  ].join('&');
+}
+
+function queryToScenarioState(prefix, params, fallbackLabel){
+  return {
+    l: params.get(prefix+'l') || fallbackLabel,
+    p: Number(params.get(prefix+'p')) || 1,
+    n: Number(params.get(prefix+'n')) || 1,
+    ts: Number(params.get(prefix+'ts')) || 16,
+    tu: params.get(prefix+'tu') || 'GiB',
+    sl: Number(params.get(prefix+'sl')) || 5,
+    d: decodeDiskList(params.get(prefix+'d'))
+  };
+}
+
+function currentQueryString(){
+  return scenarioToQuery('a_', scenarios.a) + '&' + scenarioToQuery('b_', scenarios.b);
+}
+
+function stateToScenario(key, st){
+  const s = scenarios[key];
+  s.label = st.l;
+  s.cfg = {nparity: st.p, ndata: st.n, tileSizeVal: st.ts, tileUnit: tileUnitBytesFromLabel(st.tu), slopShift: st.sl};
+  s.disks = st.d.map(([name, size, unit]) => {
+    s.idCounter++;
+    return {id:key+'-'+s.idCounter, name, size, unit, color: COLORS[(s.idCounter-1)%COLORS.length]};
+  });
+}
+
+function applyQueryState(){
+  const params = new URLSearchParams(location.search);
+  const stA = queryToScenarioState('a_', params, 'Layout A');
+  const stB = queryToScenarioState('b_', params, 'Layout B');
+  scenarios.a.disks = []; scenarios.a.idCounter = 0;
+  scenarios.b.disks = []; scenarios.b.idCounter = 0;
+  stateToScenario('a', stA);
+  stateToScenario('b', stB);
+  renderShells();
+  setSelectValues('a'); setSelectValues('b');
+  renderDisks('a'); renderDisks('b');
+  computeAll();
+}
+
+function tryLoadStateFromQuery(){
+  if(location.search && location.search.length > 1){
+    try{
+      applyQueryState();
+      return true;
+    }catch(e){
+      console.warn('Could not load state from link:', e);
+    }
+  }
+  return false;
+}
+
+function scenarioTitleBlock(s){
+  return `
+    <div class="scenario-title" style="color:${s.color}">
+      <span class="dot" style="background:${s.color}"></span>
+      <input type="text" value="${s.label}" data-scn="${s.key}" data-scnfield="label">
+    </div>
+  `;
+}
+
+function scenarioRedundancyBlock(s){
+  return `
+    <div class="panel">
+      <h2>Redundancy</h2>
+      <div class="row">
+        <label>Parity</label>
+        <select data-scn="${s.key}" data-cfg="nparity">
+          <option value="1">anyraidz1</option>
+          <option value="2">anyraidz2</option>
+          <option value="3">anyraidz3</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Data disks</label>
+        <input type="number" min="1" max="200" data-scn="${s.key}" data-cfg="ndata">
+      </div>
+      <div class="row">
+        <label>Stripe width</label>
+        <span class="stat-inline" data-out="${s.key}-width">–</span>
+      </div>
+      <div class="row">
+        <label>Tile size</label>
+        <input type="number" min="1" step="1" data-scn="${s.key}" data-cfg="tileSizeVal">
+        <select data-scn="${s.key}" data-cfg="tileUnit" style="max-width:80px;">
+          <option value="${GiB}">GiB</option>
+          <option value="${GiB*1024}">TiB</option>
+        </select>
+        <button class="add" data-autotile="${s.key}" style="flex-shrink:0;white-space:nowrap;padding:6px 9px;">Auto</button>
+      </div>
+      <div class="row">
+        <label>spa_slop_shift</label>
+        <input type="range" min="1" max="10" step="1" data-scn="${s.key}" data-cfg="slopShift" style="flex:1;">
+        <span class="stat-inline" data-out="${s.key}-slop" style="width:70px;text-align:right;">–</span>
+      </div>
+    </div>
+  `;
+}
+
+function scenarioDisksBlock(s){
+  return `
+    <div class="panel">
+      <h2>Disks</h2>
+      <div class="disks" data-disklist="${s.key}"></div>
+      <div class="btnrow">
+        <button class="add" data-add="${s.key}">+ Disk</button>
+        <button class="copy" data-copyfrom="${s.key}">Copy from other layout</button>
+      </div>
+      <div data-warn="${s.key}"></div>
+    </div>
+  `;
+}
+
+function scenarioResultBlock(s){
+  return `
+    <div class="panel">
+      <h2>Result</h2>
+      <div class="headline">
+        <span class="big" data-out="${s.key}-avail" style="color:${s.color}">–</span>
+        <span class="label">AVAIL (after slop)</span>
+      </div>
+      <div class="metrics">
+        <div class="metric data"><div class="v" data-out="${s.key}-data">–</div><div class="k">Usable data (raw)</div></div>
+        <div class="metric parity"><div class="v" data-out="${s.key}-parity">–</div><div class="k">Parity</div></div>
+        <div class="metric waste"><div class="v" data-out="${s.key}-waste">–</div><div class="k">Unsuable (waste)</div></div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--data)"></i>used (data + parity)</span>
+        <span><i style="background:var(--waste)"></i>unusable (waste)</span>
+      </div>
+      <div data-diskvizsum="${s.key}"></div>
+      <div data-diskviz="${s.key}"></div>
+    </div>
+  `;
+}
+
+function renderShells(){
+  document.getElementById('columns').innerHTML =
+    scenarioTitleBlock(scenarios.a) + scenarioTitleBlock(scenarios.b) +
+    scenarioRedundancyBlock(scenarios.a) + scenarioRedundancyBlock(scenarios.b) +
+    scenarioDisksBlock(scenarios.a) + scenarioDisksBlock(scenarios.b) +
+    scenarioResultBlock(scenarios.a) + scenarioResultBlock(scenarios.b);
+  ['a','b'].forEach(key=>{
+    document.querySelector(`[data-add="${key}"]`).addEventListener('click', ()=>{
+      const s = scenarios[key];
+      const last = s.disks[s.disks.length-1];
+      s.addDisk(null, last ? last.size : 4, last ? last.unit : 'TB');
+      renderDisks(key);
+      computeAll();
+    });
+    document.querySelector(`[data-copyfrom="${key}"]`).addEventListener('click', ()=>{
+      const other = key === 'a' ? 'b' : 'a';
+      const src = scenarios[other];
+      const dst = scenarios[key];
+      dst.disks = src.disks.map(d=>Object.assign({}, d, {id: key+'-copy-'+Math.random().toString(36).slice(2)}));
+      dst.cfg = Object.assign({}, src.cfg);
+      renderAllFieldsForScenario(key);
+      renderDisks(key);
+      computeAll();
+    });
+    document.querySelector(`[data-autotile="${key}"]`).addEventListener('click', ()=>{
+      const s = scenarios[key];
+      const bytes = autoTileSizeBytes(s.disks);
+      const field = tileBytesToField(bytes);
+      s.cfg.tileSizeVal = field.val;
+      s.cfg.tileUnit = field.unit;
+      setSelectValues(key);
+      computeAll();
+    });
+    document.querySelectorAll(`[data-scn="${key}"][data-cfg]`).forEach(el=>{
+      if(el.getAttribute('data-cfg') === 'tileSizeVal'){
+        el.step = '1';
+        el.dataset.prevValue = el.value;
+        el.addEventListener('input', ()=>{
+          const newVal = parseFloat(el.value);
+          const prevVal = parseFloat(el.dataset.prevValue);
+          if(!isNaN(newVal) && !isNaN(prevVal) && prevVal > 0){
+            const diff = newVal - prevVal;
+            if(Math.abs(Math.abs(diff)-1) < 1e-9){
+              // native single-step (arrow key or spin button) -> ZFS-style power-of-two step instead
+              let corrected = diff > 0 ? prevVal*2 : prevVal/2;
+              if(corrected < 1) corrected = 1;
+              el.value = corrected;
+              el.dataset.prevValue = String(corrected);
+              scenarios[key].cfg.tileSizeVal = corrected;
+              computeAll();
+              return;
+            }
+          }
+          el.dataset.prevValue = isNaN(newVal) ? el.dataset.prevValue : String(newVal);
+          scenarios[key].cfg.tileSizeVal = newVal || 0;
+          computeAll();
+        });
+      } else {
+        el.addEventListener('input', (e)=>{
+          const field = e.target.getAttribute('data-cfg');
+          const val = parseFloat(e.target.value);
+          scenarios[key].cfg[field] = val;
+          computeAll();
+        });
+      }
+    });
+    document.querySelector(`[data-scn="${key}"][data-scnfield="label"]`).addEventListener('input', (e)=>{
+      scenarios[key].label = e.target.value;
+    });
+  });
+}
+
+function setSelectValues(key){
+  const s = scenarios[key];
+  document.querySelector(`[data-scn="${key}"][data-cfg="nparity"]`).value = String(s.cfg.nparity);
+  document.querySelector(`[data-scn="${key}"][data-cfg="ndata"]`).value = s.cfg.ndata;
+  const tsInput = document.querySelector(`[data-scn="${key}"][data-cfg="tileSizeVal"]`);
+  tsInput.value = s.cfg.tileSizeVal;
+  tsInput.dataset.prevValue = String(s.cfg.tileSizeVal);
+  document.querySelector(`[data-scn="${key}"][data-cfg="tileUnit"]`).value = String(s.cfg.tileUnit);
+  document.querySelector(`[data-scn="${key}"][data-cfg="slopShift"]`).value = s.cfg.slopShift;
+}
+
+function renderAllFieldsForScenario(key){
+  setSelectValues(key);
+}
+
+function renderDisks(key){
+  const s = scenarios[key];
+  const list = document.querySelector(`[data-disklist="${key}"]`);
+  list.innerHTML = '';
+  s.disks.forEach(d=>{
+    const row = document.createElement('div');
+    row.className = 'disk-row';
+    row.innerHTML = `
+      <div class="disk-swatch" style="background:${d.color}"></div>
+      <input type="text" value="${d.name}" data-diskfield="name" data-diskid="${d.id}" data-scn="${key}">
+      <input type="number" min="1" step="1" value="${d.size}" data-diskfield="size" data-diskid="${d.id}" data-scn="${key}">
+      <select data-diskfield="unit" data-diskid="${d.id}" data-scn="${key}">
+        <option value="GiB" ${d.unit==='GiB'?'selected':''}>GiB</option>
+        <option value="TiB" ${d.unit==='TiB'?'selected':''}>TiB</option>
+        <option value="GB" ${d.unit==='GB'?'selected':''}>GB</option>
+        <option value="TB" ${d.unit==='TB'?'selected':''}>TB</option>
+      </select>
+      <button data-diskremove="${d.id}" data-scn="${key}" title="remove">×</button>
+    `;
+    list.appendChild(row);
+  });
+  list.querySelectorAll('input,select').forEach(el=>{
+    el.addEventListener('input', (e)=>{
+      const id = e.target.getAttribute('data-diskid');
+      const field = e.target.getAttribute('data-diskfield');
+      const d = scenarios[key].disks.find(x=>x.id===id);
+      if(!d) return;
+      if(field === 'name') d.name = e.target.value;
+      if(field === 'size') d.size = parseFloat(e.target.value) || 0;
+      if(field === 'unit') d.unit = e.target.value;
+      computeAll();
+    });
+  });
+  list.querySelectorAll('button[data-diskremove]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      scenarios[key].removeDisk(btn.getAttribute('data-diskremove'));
+      renderDisks(key);
+      computeAll();
+    });
+  });
+}
+
+function renderResults(key, r){
+  const s = scenarios[key];
+  document.querySelector(`[data-out="${key}-width"]`).textContent = r.width;
+  document.querySelector(`[data-out="${key}-slop"]`).textContent = s.cfg.slopShift + ' (' + (r.slopFraction*100).toFixed(1) + '%)';
+  document.querySelector(`[data-out="${key}-avail"]`).innerHTML = fmtBytes(r.availAfterSlop) + (r.totalRawBytes>0 ? ' <span style="font-size:0.5em;color:var(--muted);">('+(100*r.availAfterSlop/r.totalRawBytes).toFixed(1)+'%)</span>' : '');
+  document.querySelector(`[data-out="${key}-data"]`).innerHTML = fmtBytes(r.usableDataBytes) + (r.totalRawBytes>0 ? ' <span style="font-size:0.85em;color:var(--muted);">('+(100*r.usableDataBytes/r.totalRawBytes).toFixed(1)+'%)</span>' : '');
+  document.querySelector(`[data-out="${key}-parity"]`).innerHTML = fmtBytes(r.parityBytes) + (r.totalRawBytes>0 ? ' <span style="font-size:0.85em;color:var(--muted);">('+(100*r.parityBytes/r.totalRawBytes).toFixed(1)+'%)</span>' : '');
+  document.querySelector(`[data-out="${key}-waste"]`).textContent = fmtBytes(r.wasteBytes) +
+    (r.totalRawBytes>0 ? ' ('+(100*r.wasteBytes/r.totalRawBytes).toFixed(1)+'%)' : '');
+
+  const warnBox = document.querySelector(`[data-warn="${key}"]`);
+  warnBox.innerHTML = r.insufficientDisks
+    ? `<div class="warn"><b>Not enough disks:</b> needs at least ${r.disksNeeded}, you have: ${r.disksHave}.</div>`
+    : '';
+
+  const maxSize = Math.max(...r.sizesBytes, 1);
+
+  const sumUsedBytes = r.usedPerDisk.reduce((a,b)=>a+b,0) * r.tileSize;
+  const sumTotalBytes = r.tileCounts.reduce((a,b)=>a+b,0) * r.tileSize;
+  const sumUsedTiles = r.usedPerDisk.reduce((a,b)=>a+b,0);
+  const sumTotalTiles = r.tileCounts.reduce((a,b)=>a+b,0);
+  document.querySelector(`[data-diskvizsum="${key}"]`).innerHTML = `
+    <div class="diskviz-row sum-row">
+      <div class="name">Total</div>
+      <div class="bar"></div>
+      <div class="fig" data-tooltip="${sumUsedTiles} / ${sumTotalTiles} tiles">${fmtBytes(sumUsedBytes)} / ${fmtBytes(sumTotalBytes)}</div>
+    </div>
+  `;
+
+  const viz = document.querySelector(`[data-diskviz="${key}"]`);
+  viz.innerHTML = '';
+  s.disks.forEach((d,i)=>{
+    const totalTiles = r.tileCounts[i];
+    const used = r.usedPerDisk[i];
+    const usedPct = totalTiles>0 ? (used/totalTiles*100) : 0;
+    const widthPct = (r.sizesBytes[i]/maxSize*100).toFixed(1);
+    const row = document.createElement('div');
+    row.className = 'diskviz-row';
+    row.innerHTML = `
+      <div class="name" style="color:${d.color}">${d.name}</div>
+      <div class="bar"><div style="width:${widthPct}%;height:100%;display:flex;">
+        <div class="seg-used" style="width:${usedPct}%;"></div>
+        <div class="seg-waste" style="width:${100-usedPct}%;"></div>
+      </div></div>
+      <div class="fig" data-tooltip="${used} / ${totalTiles} tiles">${fmtBytes(used*r.tileSize)} / ${fmtBytes(totalTiles*r.tileSize)}</div>
+    `;
+    viz.appendChild(row);
+  });
+}
+
+function computeAll(){
+  const rA = scenarios.a.compute();
+  const rB = scenarios.b.compute();
+  renderResults('a', rA);
+  renderResults('b', rB);
+
+  document.getElementById('cmpA').textContent = fmtBytes(rA.availAfterSlop);
+  document.getElementById('cmpB').textContent = fmtBytes(rB.availAfterSlop);
+  const delta = rB.availAfterSlop - rA.availAfterSlop;
+  const sign = delta >= 0 ? '+' : '−';
+  document.getElementById('cmpDelta').textContent = sign + fmtBytes(Math.abs(delta)) +
+    (rA.availAfterSlop>0 ? ' (' + sign + Math.abs(delta/rA.availAfterSlop*100).toFixed(1) + '%)' : '');
+
+  const max = Math.max(rA.availAfterSlop, rB.availAfterSlop, 1);
+  document.getElementById('cbarA').style.width = (rA.availAfterSlop/max*100).toFixed(1)+'%';
+  document.getElementById('cbarB').style.width = (rB.availAfterSlop/max*100).toFixed(1)+'%';
+  document.getElementById('cbarAtxt').textContent = fmtBytes(rA.availAfterSlop);
+  document.getElementById('cbarBtxt').textContent = fmtBytes(rB.availAfterSlop);
+}
+
+document.getElementById('shareLink').addEventListener('click', ()=>{
+  const btn = document.getElementById('shareLink');
+  const qs = currentQueryString();
+  const url = location.origin + location.pathname + '?' + qs;
+  history.replaceState(null, '', '?' + qs);
+  const original = btn.textContent;
+  const showFeedback = (text)=>{
+    btn.textContent = text;
+    setTimeout(()=>{ btn.textContent = original; }, 2500);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(()=>{
+      showFeedback('✓ Link copied');
+    }).catch(()=>{
+      window.prompt('Copy failed — copy the link manually:', url);
+    });
+  } else {
+    window.prompt('Copy the link manually:', url);
+  }
+});
+
+if(!tryLoadStateFromQuery()){
+  renderShells();
+  setSelectValues('a');
+  setSelectValues('b');
+  renderDisks('a');
+  renderDisks('b');
+  computeAll();
+}
+</script>
+</body>
+</html>
